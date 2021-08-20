@@ -7,8 +7,11 @@ using Newtonsoft.Json;
 using Siccity.GLTFUtility.Converters;
 using UnityEngine;
 using UnityEngine.Scripting;
+using Newtonsoft.Json.Linq;
 
 namespace Siccity.GLTFUtility {
+
+	public delegate void CustomImport(int i, GLTFNode[] nodes, GLTFNode.ImportResult[] results);
 	// https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#node
 	[Preserve] public class GLTFNode {
 #region Serialization
@@ -27,6 +30,16 @@ namespace Siccity.GLTFUtility {
 		public int? skin;
 		public int? camera;
 		public int? weights;
+
+		public Extras extras;
+
+		public class Extras {
+			/// <summary>
+			/// Morph target names. Not part of the official spec, but pretty much a standard.
+			/// Discussed here https://github.com/KhronosGroup/glTF/issues/1036
+			/// </summary>
+			public JObject unity_scripts;
+		}
 
 		public bool ShouldSerializetranslation() { return translation != Vector3.zero; }
 		public bool ShouldSerializerotation() { return rotation != Quaternion.identity; }
@@ -55,11 +68,15 @@ namespace Siccity.GLTFUtility {
 			GLTFSkin.ImportTask skinTask;
 			List<GLTFCamera> cameras;
 
-			public ImportTask(List<GLTFNode> nodes, GLTFMesh.ImportTask meshTask, GLTFSkin.ImportTask skinTask, List<GLTFCamera> cameras) : base(meshTask, skinTask) {
+			
+			CustomImport customImport;
+
+			public ImportTask(List<GLTFNode> nodes, GLTFMesh.ImportTask meshTask, GLTFSkin.ImportTask skinTask, List<GLTFCamera> cameras, CustomImport customImport = null) : base(meshTask, skinTask) {
 				this.nodes = nodes;
 				this.meshTask = meshTask;
 				this.skinTask = skinTask;
 				this.cameras = cameras;
+				this.customImport = customImport;
 				task = new Task(() => { });
 			}
 
@@ -143,7 +160,12 @@ namespace Siccity.GLTFUtility {
 							camera.fieldOfView = Mathf.Rad2Deg * cameraData.perspective.yfov;
 						}
 					}
-				}
+					
+				}	
+				if(customImport != null)
+					for (int i = 0; i < Result.Length; i++) {
+						customImport(i, nodes.ToArray(), Result);
+					}
 				IsCompleted = true;
 			}
 		}

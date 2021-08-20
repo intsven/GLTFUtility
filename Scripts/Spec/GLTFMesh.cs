@@ -134,26 +134,34 @@ namespace Siccity.GLTFUtility {
 
 								// Verts - (X points left in GLTF)
 								if (primitive.attributes.POSITION.HasValue) {
-									IEnumerable<Vector3> newVerts = accessors[primitive.attributes.POSITION.Value].ReadVec3(true).Select(v => { v.x = -v.x; return v; });
+									IEnumerable<Vector3> newVerts = accessors[primitive.attributes.POSITION.Value].ReadVec3(true).Select(v => { v.z = -v.z; return v; });
 									verts.AddRange(newVerts);
 								}
 
 								int vertCount = verts.Count;
 
-								// Tris - (Invert all triangles. Instead of flipping each triangle, just flip the entire array. Much easier)
+								// Tris - (Invert all triangles. Flipping each triangle in place)
 								if (primitive.indices.HasValue) {
-									submeshTris.Add(new List<int>(accessors[primitive.indices.Value].ReadInt().Reverse().Select(x => x + vertStartIndex)));
+									var triList = new List<int>(accessors[primitive.indices.Value].ReadInt());
+									var newTriList = new List<int>();
+									for (int j = 0; j < triList.Count; j++)
+									{
+										var startTris = j - (j % 3);
+										var switched = ((j % 3 - 1) * -1) + 1;
+										newTriList.Add(triList[startTris + switched]);
+									}
+									submeshTris.Add(newTriList);
 									submeshTrisMode.Add(primitive.mode);
 								}
 
 								/// Normals - (X points left in GLTF)
 								if (primitive.attributes.NORMAL.HasValue) {
-									normals.AddRange(accessors[primitive.attributes.NORMAL.Value].ReadVec3(true).Select(v => { v.x = -v.x; return v; }));
+									normals.AddRange(accessors[primitive.attributes.NORMAL.Value].ReadVec3(true).Select(v => { v.z = -v.z; return v; }));
 								}
 
 								// Tangents - (X points left in GLTF)
 								if (primitive.attributes.TANGENT.HasValue) {
-									tangents.AddRange(accessors[primitive.attributes.TANGENT.Value].ReadVec4(true).Select(v => { v.y = -v.y; v.z = -v.z; return v; }));
+									tangents.AddRange(accessors[primitive.attributes.TANGENT.Value].ReadVec4(true).Select(v => {v.z = -v.z; v.w = -v.w; return v; }));
 								}
 
 								// Vertex colors
@@ -317,7 +325,7 @@ namespace Siccity.GLTFUtility {
 						return;
 					}
 					Vector2[] _uvs = accessors[texcoord.Value].ReadVec2(true);
-					FlipY(ref _uvs);
+					//FlipY(ref _uvs);
 					if (uvs == null) uvs = new List<Vector2>(_uvs);
 					else uvs.AddRange(_uvs);
 				}

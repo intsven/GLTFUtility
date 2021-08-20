@@ -11,9 +11,9 @@ using UnityEngine;
 namespace Siccity.GLTFUtility {
 	/// <summary> API used for importing .gltf and .glb files </summary>
 	public static class Importer {
-		public static GameObject LoadFromFile(string filepath, Format format = Format.AUTO) {
+		public static GameObject LoadFromFile(string filepath, Format format = Format.AUTO, CustomImport customImport = null) {
 			AnimationClip[] animations;
-			return LoadFromFile(filepath, new ImportSettings(), out animations, format);
+			return LoadFromFile(filepath, new ImportSettings(), out animations, format, customImport);
 		}
 
 		public static GameObject LoadFromFile(string filepath, ImportSettings importSettings, Format format = Format.AUTO) {
@@ -21,15 +21,15 @@ namespace Siccity.GLTFUtility {
 			return LoadFromFile(filepath, importSettings, out animations, format);
 		}
 
-		public static GameObject LoadFromFile(string filepath, ImportSettings importSettings, out AnimationClip[] animations, Format format = Format.AUTO) {
+		public static GameObject LoadFromFile(string filepath, ImportSettings importSettings, out AnimationClip[] animations, Format format = Format.AUTO, CustomImport customImport = null) {
 			if (format == Format.GLB) {
 				return ImportGLB(filepath, importSettings, out animations);
 			} else if (format == Format.GLTF) {
-				return ImportGLTF(filepath, importSettings, out animations);
+				return ImportGLTF(filepath, importSettings, out animations, customImport);
 			} else {
 				string extension = Path.GetExtension(filepath).ToLower();
 				if (extension == ".glb") return ImportGLB(filepath, importSettings, out animations);
-				else if (extension == ".gltf") return ImportGLTF(filepath, importSettings, out animations);
+				else if (extension == ".gltf") return ImportGLTF(filepath, importSettings, out animations, customImport);
 				else {
 					Debug.Log("Extension '" + extension + "' not recognized in " + filepath);
 					animations = null;
@@ -133,12 +133,12 @@ namespace Siccity.GLTFUtility {
 		}
 #endregion
 
-		private static GameObject ImportGLTF(string filepath, ImportSettings importSettings, out AnimationClip[] animations) {
+		private static GameObject ImportGLTF(string filepath, ImportSettings importSettings, out AnimationClip[] animations, CustomImport customImport) {
 			string json = File.ReadAllText(filepath);
 
 			// Parse json
 			GLTFObject gltfObject = JsonConvert.DeserializeObject<GLTFObject>(json);
-			return gltfObject.LoadInternal(filepath, null, 0, importSettings, out animations);
+			return gltfObject.LoadInternal(filepath, null, 0, importSettings, out animations, customImport);
 		}
 
 		public static void ImportGLTFAsync(string filepath, ImportSettings importSettings, Action<GameObject, AnimationClip[]> onFinished, Action<float> onProgress = null) {
@@ -182,7 +182,7 @@ namespace Siccity.GLTFUtility {
 		}
 
 #region Sync
-		private static GameObject LoadInternal(this GLTFObject gltfObject, string filepath, byte[] bytefile, long binChunkStart, ImportSettings importSettings, out AnimationClip[] animations) {
+		private static GameObject LoadInternal(this GLTFObject gltfObject, string filepath, byte[] bytefile, long binChunkStart, ImportSettings importSettings, out AnimationClip[] animations, CustomImport customImport = null) {
 			CheckExtensions(gltfObject);
 
 			// directory root is sometimes used for loading buffers from containing file, or local images
@@ -207,7 +207,7 @@ namespace Siccity.GLTFUtility {
 			meshTask.RunSynchronously();
 			GLTFSkin.ImportTask skinTask = new GLTFSkin.ImportTask(gltfObject.skins, accessorTask);
 			skinTask.RunSynchronously();
-			GLTFNode.ImportTask nodeTask = new GLTFNode.ImportTask(gltfObject.nodes, meshTask, skinTask, gltfObject.cameras);
+			GLTFNode.ImportTask nodeTask = new GLTFNode.ImportTask(gltfObject.nodes, meshTask, skinTask, gltfObject.cameras, customImport);
 			nodeTask.RunSynchronously();
 			GLTFAnimation.ImportResult[] animationResult = gltfObject.animations.Import(accessorTask.Result, nodeTask.Result, importSettings);
 			if (animationResult != null) animations = animationResult.Select(x => x.clip).ToArray();
@@ -300,6 +300,8 @@ namespace Siccity.GLTFUtility {
 						case "KHR_materials_pbrSpecularGlossiness":
 							break;
 						case "KHR_draco_mesh_compression":
+							break;
+						case "AWE_visualizer":
 							break;
 						default:
 							Debug.LogWarning($"GLTFUtility: Required extension '{gLTFObject.extensionsRequired[i]}' not supported. Import process will proceed but results may vary.");
