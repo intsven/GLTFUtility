@@ -34,7 +34,7 @@ namespace Siccity.GLTFUtility {
 			}
 
 			public IEnumerator CreateTextureAsync(bool linear, Action<Texture2D> onFinish, Action<float> onProgress = null) {
-				if (!string.IsNullOrEmpty(path)) {
+				if (false && !string.IsNullOrEmpty(path)) {
 #if UNITY_EDITOR
 					// Load textures from asset database if we can
 					Texture2D assetTexture = UnityEditor.AssetDatabase.LoadAssetAtPath(path, typeof(Texture2D)) as Texture2D;
@@ -43,6 +43,8 @@ namespace Siccity.GLTFUtility {
 						if (onProgress != null) onProgress(1f);
 						yield break;
 					}
+					var newPath = "file://" + Path.GetDirectoryName(Application.dataPath).Replace("\\", "/") + "/" + path;
+					path = newPath;
 #endif
 
 #if !UNITY_EDITOR && ( UNITY_ANDROID || UNITY_IOS )
@@ -75,6 +77,17 @@ namespace Siccity.GLTFUtility {
 						}
 						uwr.Dispose();
 					}
+				} else if(!string.IsNullOrEmpty(path)){
+					Texture2D tex = null;
+					byte[] fileData;
+				
+					if (File.Exists(path)){
+						fileData = File.ReadAllBytes(path);
+						tex = new Texture2D(2, 2);
+						tex.LoadImage(fileData); //..this will auto-resize the texture dimensions.
+					}
+					onFinish(tex);
+
 				} else {
 					Texture2D tex = new Texture2D(2, 2, TextureFormat.ARGB32, true, linear);
 					if (!tex.LoadImage(bytes)) {

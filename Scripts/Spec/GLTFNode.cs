@@ -11,7 +11,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Siccity.GLTFUtility {
 
-	public delegate void CustomImport(int i, GLTFNode[] nodes, GLTFNode.ImportResult[] results);
+	public delegate bool CustomImport(int i, GLTFNode[] nodes, GLTFNode.ImportResult[] results);
 	// https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/README.md#node
 	[Preserve] public class GLTFNode {
 #region Serialization
@@ -40,6 +40,8 @@ namespace Siccity.GLTFUtility {
 			/// </summary>
 			public JObject unity_scripts;
 		}
+
+		public static GameObject[] gameObjects { get; private set; }
 
 		public bool ShouldSerializetranslation() { return translation != Vector3.zero; }
 		public bool ShouldSerializerotation() { return rotation != Quaternion.identity; }
@@ -89,12 +91,14 @@ namespace Siccity.GLTFUtility {
 				}
 
 				Result = new ImportResult[nodes.Count];
+				gameObjects = new GameObject[Result.Length];
 
 				// Initialize transforms
 				for (int i = 0; i < Result.Length; i++) {
 					Result[i] = new GLTFNode.ImportResult();
 					Result[i].transform = new GameObject().transform;
 					Result[i].transform.name = nodes[i].name;
+					gameObjects[i] = Result[i].transform.gameObject;
 				}
 				// Set up hierarchy
 				for (int i = 0; i < Result.Length; i++) {
@@ -162,10 +166,17 @@ namespace Siccity.GLTFUtility {
 					}
 					
 				}	
+				
+				
+				//yield return new WaitForSeconds(10f);
+				yield return null;
 				if(customImport != null)
 					for (int i = 0; i < Result.Length; i++) {
-						customImport(i, nodes.ToArray(), Result);
+						if(!customImport(i, nodes.ToArray(), Result))
+							Debug.Log("customImport failed");
 					}
+				//yield return new WaitForSeconds(10f);
+				Debug.Log("isCompleted");
 				IsCompleted = true;
 			}
 		}

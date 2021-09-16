@@ -14,8 +14,8 @@ namespace Siccity.GLTFUtility {
 		public string name;
 
 		public class ImportResult {
-			private GLTFImage.ImportResult image;
-			private Texture2D cache;
+			public GLTFImage.ImportResult image;
+			public Texture2D cache{ get; private set; }
 
 			/// <summary> Constructor </summary>
 			public ImportResult(GLTFImage.ImportResult image) {

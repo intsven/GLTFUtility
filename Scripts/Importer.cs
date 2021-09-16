@@ -11,6 +11,8 @@ using UnityEngine;
 namespace Siccity.GLTFUtility {
 	/// <summary> API used for importing .gltf and .glb files </summary>
 	public static class Importer {
+
+		public static GLTFTexture.ImportTask textureTask;
 		public static GameObject LoadFromFile(string filepath, Format format = Format.AUTO, CustomImport customImport = null) {
 			AnimationClip[] animations;
 			return LoadFromFile(filepath, new ImportSettings(), out animations, format, customImport);
@@ -134,7 +136,12 @@ namespace Siccity.GLTFUtility {
 #endregion
 
 		private static GameObject ImportGLTF(string filepath, ImportSettings importSettings, out AnimationClip[] animations, CustomImport customImport) {
-			string json = File.ReadAllText(filepath);
+			Debug.Log("ImportGLTF() in Importer");
+			StreamReader reader = new StreamReader(filepath); 
+			string json = reader.ReadToEnd();
+			reader.Close();
+
+			
 
 			// Parse json
 			GLTFObject gltfObject = JsonConvert.DeserializeObject<GLTFObject>(json);
@@ -199,7 +206,7 @@ namespace Siccity.GLTFUtility {
 			accessorTask.RunSynchronously();
 			GLTFImage.ImportTask imageTask = new GLTFImage.ImportTask(gltfObject.images, directoryRoot, bufferViewTask);
 			imageTask.RunSynchronously();
-			GLTFTexture.ImportTask textureTask = new GLTFTexture.ImportTask(gltfObject.textures, imageTask);
+			textureTask = new GLTFTexture.ImportTask(gltfObject.textures, imageTask);
 			textureTask.RunSynchronously();
 			GLTFMaterial.ImportTask materialTask = new GLTFMaterial.ImportTask(gltfObject.materials, textureTask, importSettings);
 			materialTask.RunSynchronously();
